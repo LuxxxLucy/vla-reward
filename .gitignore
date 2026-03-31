@@ -1,0 +1,22 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Results
+results
+figures
+
+# Secrets
+.env
+
+# Data cache (keep manifest for reproducibility)
+data/
+!data/videos/manifest.json
+!data/videos/README.md

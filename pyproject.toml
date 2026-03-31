@@ -1,0 +1,25 @@
+[project]
+name = "vla-reward"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "torch",
+    "torchvision",
+    "transformers>=4.45",
+    "accelerate",
+    "qwen-vl-utils",
+    "datasets",
+    "scipy",
+    "numpy",
+    "matplotlib",
+    "seaborn",
+    "pandas",
+    "tqdm",
+    "opencv-python",
+    "Pillow",
+    "openai",
+    "python-dotenv>=1.2.2",
+    "mlx-vlm>=0.4.2 ; sys_platform == 'darwin'",
+]
