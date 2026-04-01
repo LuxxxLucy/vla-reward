@@ -1,0 +1,58 @@
+/* ── Custom styles ONLY — tufte.css loaded via <link> in HTML head ── */
+
+/* Force light mode — tufte 1.8 has auto dark mode */
+:root { color-scheme: light only; }
+@media (prefers-color-scheme: dark) {
+  body { background-color: #fffff8 !important; color: #111 !important; }
+}
+
+/* ── Compact layout (Mr. Lucy's pattern) ── */
+article { padding: 1rem 0; padding-left: 5%; margin-left: 1rem; }
+
+/* ── Monospace font for code ── */
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
+code { font-family: 'JetBrains Mono', 'Menlo', monospace; }
+
+/* ── Custom utility classes ── */
+.r { text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 0.82em; }
+.hi { font-weight: 600; color: #4e79a7; }
+.dim { color: #9ca3af; }
+.credit { font-size: 0.8rem; color: #9ca3af; }
+
+/* ── Chart color variables ── */
+:root {
+  --c-2b: #4e79a7;
+  --c-ens: #e15759;
+  --c-8b: #59a14f;
+  --c-vision: #76b7b2;
+  --c-language: #b07aa1;
+}
+
+/* ── Chart containers ── */
+.chart-container svg { overflow: visible; }
+
+/* ── Video reward widget ── */
+.vrw-layout { display: flex; gap: 1rem; align-items: stretch; }
+.vrw-video-section { flex: 0 0 45%; border-radius: 6px; overflow: hidden; }
+.vrw-video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.vrw-chart-section { flex: 1; min-height: 240px; position: relative; }
+.vrw-canvas { width: 100% !important; height: 100% !important; }
+.vrw-controls { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.4rem; font-size: 0.82rem; color: #6b7280; }
+.vrw-play-btn { background: #f7f7f0; border: 1px solid #e0dfda; border-radius: 4px; padding: 0.25rem 0.7rem; font-size: 0.82rem; cursor: pointer; }
+.vrw-play-btn:hover { background: #e0dfda; }
+
+/* ── Small multiples grid ── */
+.small-multiples { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1.5rem 0; }
+.small-multiples .panel-title { font-size: 0.82rem; font-weight: 600; margin-bottom: 0.3rem; }
+
+/* ── D3 axis styling ── */
+.axis path.domain { display: none; }
+.axis .tick line { stroke: #e0dfda; }
+.axis text { font-size: 11px; fill: #6b7280; }
+
+/* ── Responsive ── */
+@media (max-width: 760px) {
+  .vrw-layout { flex-direction: column; }
+  .vrw-video-section { flex: none; }
+  .small-multiples { grid-template-columns: 1fr; }
+}
