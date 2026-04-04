@@ -17,6 +17,7 @@ figures
 .env
 
 # Data cache (keep manifest for reproducibility)
-data/
-!data/videos/manifest.json
-!data/videos/README.md
+data/*
+!data/videos/
+data/videos/*
+!data/videos/fold_towel.mp4
