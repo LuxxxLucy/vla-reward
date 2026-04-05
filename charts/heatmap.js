@@ -30,7 +30,7 @@
       .attr('x', i * cellW + cellW/2)
       .attr('y', -10)
       .attr('text-anchor', 'middle')
-      .attr('font-size', '11px')
+      .attr('font-size', '13px')
       .attr('fill', C.text)
       .attr('font-weight', '600')
       .text(v);
@@ -43,7 +43,7 @@
       .attr('y', i * cellH + cellH/2)
       .attr('text-anchor', 'end')
       .attr('dy', '0.35em')
-      .attr('font-size', '10px')
+      .attr('font-size', '12px')
       .attr('fill', C.muted)
       .text(p);
   });
@@ -65,7 +65,7 @@
         .attr('y', ri * cellH + cellH/2)
         .attr('text-anchor', 'middle')
         .attr('dy', '0.35em')
-        .attr('font-size', '11px')
+        .attr('font-size', '13px')
         .attr('font-family', 'var(--mono)')
         .attr('fill', luminance < 55 ? 'white' : C.text)
         .text(val.toFixed(2));

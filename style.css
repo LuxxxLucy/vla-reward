@@ -48,7 +48,7 @@ code { font-family: 'JetBrains Mono', 'Menlo', monospace; }
 /* ── D3 axis styling ── */
 .axis path.domain { display: none; }
 .axis .tick line { stroke: #e0dfda; }
-.axis text { font-size: 11px; fill: #6b7280; }
+.axis text { font-size: 13px; fill: #6b7280; }
 
 /* ── Responsive ── */
 @media (max-width: 760px) {

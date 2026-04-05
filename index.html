@@ -18,35 +18,42 @@
     <p class="subtitle">Jialin Lu &middot; February 27, 2026</p>
     <p><label for="mn-code" class="margin-toggle">&#8853;</label><input type="checkbox" id="mn-code" class="margin-toggle"/><span class="marginnote">Code available at <a href="https://github.com/luxxxlucy/vla-reward">luxxxlucy/vla-reward</a></span>
     <em>TL;DR</em>&ensp;
-    Some attempts to get cheap and good dense rewards from a VLM for robotic
-    manipulation. We show that simple prompt tricks on a small model can approach
-    large-model quality, and there are reasons to think this can go further.
+    Attempts and experiment to get
+    cheap and good dense
+    rewards from a VLM for robotic manipulation tasks. After some experiments, I believe that,
+    for this task (getting reward from VLM) and maybe VLA tasks, current VLMs might over-investe in advancing the language part and less so on the vision part.
+    And it seems it is keeping going that way, we might need VLMs that have larger vision and slightly larger language instead.
     </p>
   </section>
 
   <section>
 
     <p>
-      <span class="newthought">I recently read</span> a paper that had appeared on arXiv just
-      days earlier<label for="sn-paper" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-paper" class="margin-toggle"/><span class="sidenote"><a href="https://arxiv.org/abs/2602.19313">TOPreward</a> (Chen, Harrison, Lee et al., UW / AI2, February 2026). Submitted February 22; I came across it on the 25th.</span>&mdash;it
-      was hot, new, and addressed a problem central to robot learning:
-      how to tell a robot whether it is making progress on a task.
+      <span class="newthought">I recently read</span> the TOPReward paper (that is out just a few
+      days ago)<label for="sn-paper" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-paper" class="margin-toggle"/><span class="sidenote"><a href="https://arxiv.org/abs/2602.19313">TOPReward: Token Probabilities as Hidden Zero-Shot Rewards for Robotics</a> (Chen, Harrison, Lee et al., February 2026).</span>&mdash;it
+      finds quite a simple way to get dense rewards for robotic manipulation:
+      just read one token probability from a VLM, with no training needed. It is
+      surprising how well this works with such a simple setup.
     </p>
 
     <p>
-      Reinforcement learning for manipulation requires dense rewards.
-      A sparse reward&mdash;a single binary signal at the very end of an episode saying
-      "task completed" or "task failed"&mdash;gives the learning algorithm almost nothing
-      to work with. The agent must stumble upon success by chance before it can begin
-      to learn, and in a high-dimensional manipulation task, chance is not generous.
-      A dense reward provides a signal at every timestep:
-      <em>you are closer to the goal</em> or <em>you have moved further away</em>.
+      Today&rsquo;s robotic manipulation systems&mdash;from neural-network-based
+      controllers to the newer Vision-Language-Action models
+      (VLAs)&mdash;are often adapted to new tasks using reinforcement learning (RL).
+      But RL needs a dense, well-shaped reward signal to work well.
+      Manual annotation, in simpler collecting ways, typically only gives sparse
+      rewards (a single success/fail at the end, or at a few key moments),
+      which makes learning slow and sample-inefficient.<label for="sn-dense" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-dense" class="margin-toggle"/><span class="sidenote">Sparse rewards leave the learner with no gradient signal for most of the trajectory. Reward shaping and engineering are the workarounds.</span>
+      What we need are <em>dense</em> rewards&mdash;a signal at every timestep
+      saying whether the robot is getting closer or further from the goal.
+      The alternative is to engineer reward heuristics by hand given the sparse signal (say at the end of the episode), but that is
+      brittle and task-specific.
     </p>
 
     <figure>
       <svg width="520" height="130" viewBox="0 0 520 130" style="font-family: et-book, Georgia, serif;">
         <!-- Sparse reward (left) -->
-        <text x="120" y="15" text-anchor="middle" font-size="12" fill="#6b7280" font-style="italic">Sparse reward</text>
+        <text x="120" y="15" text-anchor="middle" font-size="14" fill="#6b7280" font-style="italic">Sparse reward</text>
         <!-- Axes -->
         <line x1="20" y1="100" x2="220" y2="100" stroke="#999" stroke-width="1.5"/>
         <line x1="20" y1="100" x2="20" y2="25" stroke="#999" stroke-width="1.5"/>
@@ -60,11 +67,11 @@
         <circle cx="170" cy="90" r="3" fill="#e15759" opacity="0.3"/>
         <circle cx="195" cy="40" r="4" fill="#e15759"/>
         <!-- Label -->
-        <text x="200" y="35" font-size="10" fill="#e15759">+1</text>
-        <text x="120" y="120" text-anchor="middle" font-size="10" fill="#999">time &rarr;</text>
+        <text x="200" y="35" font-size="12" fill="#e15759">+1</text>
+        <text x="120" y="120" text-anchor="middle" font-size="12" fill="#999">time &rarr;</text>
 
         <!-- Dense reward (right) -->
-        <text x="390" y="15" text-anchor="middle" font-size="12" fill="#6b7280" font-style="italic">Dense reward</text>
+        <text x="390" y="15" text-anchor="middle" font-size="14" fill="#6b7280" font-style="italic">Dense reward</text>
         <!-- Axes -->
         <line x1="290" y1="100" x2="490" y2="100" stroke="#999" stroke-width="1.5"/>
         <line x1="290" y1="100" x2="290" y2="25" stroke="#999" stroke-width="1.5"/>
@@ -78,46 +85,37 @@
         <circle cx="410" cy="55" r="3.5" fill="#59a14f"/>
         <circle cx="440" cy="45" r="3.5" fill="#59a14f"/>
         <circle cx="470" cy="38" r="3.5" fill="#59a14f"/>
-        <text x="390" y="120" text-anchor="middle" font-size="10" fill="#999">time &rarr;</text>
+        <text x="390" y="120" text-anchor="middle" font-size="12" fill="#999">time &rarr;</text>
       </svg>
     </figure>
 
     <p>
-      Designing dense rewards by hand is tedious and brittle.
-      One approach is to use human annotators&mdash;watch a video, label progress at each
-      frame&mdash;but that scales poorly. Another is to ask a pretrained vision-language model
-      to score task progress. The standard method prompts the model to <em>generate</em> a
-      numerical rating ("rate progress from 1 to 10"), but models are poorly calibrated for
-      this; they tend to produce vague, overconfident, or inconsistent numbers.
-    </p>
-
-    <p>
-      TOPreward sidesteps text generation entirely.
-      Instead of asking the model to <em>write</em> a score, it poses a yes/no completion
-      question and reads the answer from the model's raw output logits&mdash;the internal
-      probability distribution before any text is produced. The prompt is:
+      What if we could get dense rewards from a
+      pretrained model&mdash;one that some lab already spent enormous resources
+      building&mdash;for free?
+      Previous approaches use VLMs by prompting them to <em>generate</em> a
+      numeric progress score as text&mdash;for instance, GVL<label for="sn-gvl" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-gvl" class="margin-toggle"/><span class="sidenote"><a href="https://arxiv.org/abs/2411.04549">GVL: Vision Language Models are In-Context Value Learners</a> (Mees et al., 2024) asks GPT-4o to rate task progress as text.</span>
+      asks GPT-4o to rate progress from 1 to 10.
+      Note that this means to generate tokens of the numerical values.
+      But models are poorly suited for this task; they produce vague or inconsistent numbers.
+      TOPReward finds a much simpler idea: instead of asking the model to
+      <em>write</em> the reward as (possibly multiple) tokens that represents a numeric value, it just checking the VLM's output layer regarding a particular token (<code>" true"</code>), using
+      the probability of generating this token as a more calibrated and valid reward signal:
     </p>
 
     <blockquote>
-      <code>The above images show a robot manipulation trajectory that completes the following task: {instruction}. Decide whether the above statement is True or not. The answer is:</code>
+      <p style="margin:0;font-size:0.9em;color:#6b7280;"><strong>Input 1:</strong> video of the robot trajectory</p>
+      <p style="margin:0;font-size:0.9em;color:#6b7280;"><strong>Input 2:</strong> prompt</p>
+      <p style="margin:0.5em 0.8em 0.6em;"><code>The above videos show a robot manipulation trajectory that completes the following task: {task_description}. Decide whether the above statement is True or not. The answer is:</code></p>
+      <p style="margin:0.3em 0 0;font-size:0.9em;color:#6b7280;"><strong>Reward</strong>: log P(<code>" True"</code>)</p>
     </blockquote>
 
     <p>
-      One forward pass, one logit read at the position of the token
-      <code>" True"</code>.<label for="sn-token" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-token" class="margin-toggle"/><span class="sidenote">Specifically <code>" True"</code> with a leading space&mdash;token ID 3007 in Qwen's vocabulary, not <code>"True"</code> (ID 2514). Also, <code>use_chat_template=False</code> is critical; the chat template shifts probability mass toward full-sentence continuations and drops the metric from ~0.95 to ~0.50.</span>
-      That number is the reward. Higher logit means the model considers the task more complete.
-      Repeat for 10 video prefixes sampled uniformly along the trajectory, and the result is a
-      reward curve that should rise monotonically as the task progresses.
-      The metric used to evaluate this is VOC&mdash;Value-Order Correlation, the Spearman rank
-      correlation between reward values and prefix indices. A VOC of 1.0 means the reward
-      increases at every step; 0.0 is random noise.<label for="sn-voc" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-voc" class="margin-toggle"/><span class="sidenote">The paper reports VOC = 0.857 on Open X-Embodiment (780 episodes) with Qwen3-VL-8B. For comparison, GVL&mdash;which asks GPT-4o to <em>generate</em> progress text&mdash;gets 0.194.</span>
-    </p>
-
-    <p>
-      This is what drew me in: a method that is zero-shot, training-free, and runs on an
-      open-source model. The question I wanted to answer is whether it works reliably on a
-      small model (Qwen3-VL-2B on a MacBook), and whether simple prompt engineering can close
-      the gap to the larger 8B variant.<label for="sn-realtime" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-realtime" class="margin-toggle"/><span class="sidenote">Recent work like <a href="https://arxiv.org/abs/2510.26742">Running VLAs at Real-time Speed</a> (Ma et al., 2025) shows that even pi0-level VLAs can hit 30&thinsp;Hz on a single consumer GPU. In my day job I mostly optimize CPU performance, so the question of how much robotics you can squeeze out of low-end hardware is one I find personally compelling.</span>
+      The higher this probability, the more the model considers that the video being fed is working towards the task description goal.
+      Do this for several video prefixes sampled along the trajectory, and you get
+      a dense reward curve that should rise as the task progresses.
+      This seems too good to be sure, open-source model, no training, dead-simple setup.
+      So I tried it.
     </p>
 
   </section>
@@ -126,56 +124,37 @@
 
   <!-- ════ BASELINE ════ -->
   <section>
-    <h2>What the reward looks like</h2>
+    <h2>How does it work</h2>
 
     <p>
-      <span class="newthought">I ran TOPreward</span> on 7 robot manipulation videos from the
-      <a href="https://topreward.github.io/webpage/">project page</a>
-      plus 1 from <a href="https://github.com/philfung/reward-scope">reward-scope</a>,
-      using Qwen3-VL-2B and 8B via <a href="https://github.com/ml-explore/mlx">MLX</a>
-      on Apple Silicon (24 GB).<label for="sn-framework" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-framework" class="margin-toggle"/><span class="sidenote">One early lesson: logits are not comparable across inference frameworks. The same 8B model on the same video gives different log-probabilities in PyTorch (bfloat16) vs MLX (float16). Same weights, different numerics. All numbers below are MLX-only.</span>
-      The widget below shows what TOPreward produces in practice; press play to watch
-      the reward curves animate alongside the video.
+      <span class="newthought">I collected</span> several robot manipulation
+      videos and ran TOPReward with Qwen3-VL models.<label for="sn-framework" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-framework" class="margin-toggle"/><span class="sidenote">All inference via <a href="https://github.com/ml-explore/mlx">MLX</a>. Some Implementation caveats: the token is <code>" True"</code> with a leading space (ID 3007 in Qwen), not <code>"True"</code> (ID 2514); also <code>use_chat_template=False</code> is critical.</span>
+      Below is what TOPReward produces in practice.
     </p>
 
-    <!-- Video + reward curve widget (reward-scope style) -->
     <figure class="fullwidth">
       <div id="video-reward-widget" data-video="data/videos/fold_towel.mp4"></div>
-      <figcaption>
-        Fold towel. The 8B reward (green) rises smoothly.
-        The 2B reward (blue) is noisy but trends upward.
-        The 3-prompt ensemble (red) is remarkably stable&mdash;and exceeds 8B here.
-      </figcaption>
+      <figcaption>Task: &ldquo;Fold the towel.&rdquo; Press play to watch the reward curves animate alongside the video. The 8B reward (green) rises smoothly. The 2B reward (blue) is noisy but still trends upward. The 3-prompt ensemble (red), which we introduce later, is remarkably stable&mdash;and even exceeds 8B here. <span class="credit">Videos from <a href="https://topreward.github.io/webpage/">TOPReward project page</a> and <a href="https://github.com/philfung/reward-scope">philfung/reward-scope</a>.</span></figcaption>
     </figure>
 
     <p>
-      The 8B model performs consistently across tasks (mean VOC 0.916, std 0.060).
+      For a successful task video demonstration, the ideal reward should increase monotonically as the robot
+      makes progress. The metric that captures this is called VOC (Value-Order
+      Correlation)&mdash;the Spearman rank correlation between reward values and
+      their position in the trajectory.<label for="sn-voc" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-voc" class="margin-toggle"/><span class="sidenote">VOC = 1.0 means the reward increases at every step; 0.0 is random noise. The original paper reports VOC = 0.857 on Open X-Embodiment (780 episodes) with Qwen3-VL-8B. For comparison, GVL&mdash;which asks GPT-4o to <em>generate</em> progress text&mdash;gets only 0.194.</span>
+      I tested on 8 videos covering tasks of varying difficulty: fold towel,
+      remove cap, put block/marker/pen into cup, stack cubes (two sources),
+      and ride bike.
+      The 8B model performs consistently across these tasks (mean VOC 0.916, std 0.060).
       The 2B model is far more variable (mean 0.766, std 0.244)&mdash;fine on
       easy tasks like marker&rarr;cup (0.970), but near-random on hard ones like pen&rarr;cup
-      (0.215). The gap between the two models is driven almost entirely by these difficult
-      cases.
+      (0.215). The gap is driven almost entirely by the difficult cases.
     </p>
-
-    <!-- Grouped bar chart: 4 tasks -->
-    <figure>
-      <div class="chart-container" id="chart-baseline"></div>
-      <figcaption>
-        VOC for four representative tasks.
-        <span style="color:var(--c-2b);">&#9632;</span>&thinsp;2B &ensp;
-        <span style="color:var(--c-ens);">&#9632;</span>&thinsp;3-prompt ensemble &ensp;
-        <span style="color:var(--c-8b);">&#9632;</span>&thinsp;8B.
-        The ensemble closes 62% of the 2B&rarr;8B gap on average across all 7 videos.
-      </figcaption>
-    </figure>
 
     <!-- Multi-method landscape comparison -->
     <figure>
+      <label for="mn-landscape" class="margin-toggle">&#8853;</label><input type="checkbox" id="mn-landscape" class="margin-toggle"/><span class="marginnote">Task: &ldquo;Remove the block and stack the green cube on the red cube.&rdquo; Multi-method comparison. Normalized progress curves from six methods on the same video.</span>
       <div class="chart-container" id="chart-landscape"></div>
-      <figcaption>
-        Stackcubes&mdash;multi-method comparison.
-        Normalized progress curves from six methods on the same video.
-        <span class="credit">Comparison data from <a href="https://github.com/philfung/reward-scope">philfung/reward-scope</a>.</span>
-      </figcaption>
     </figure>
 
   </section>
@@ -184,13 +163,16 @@
 
   <!-- ════ CONTRASTIVE ════ -->
   <section>
-    <h2>The contrastive extension that does not work</h2>
+    <h2>Using P("True") &minus; P("False") instead of just P("True")</h2>
 
     <p>
-      <span class="newthought">A natural first idea</span>: the same forward pass that produces
-      log&thinsp;P("True") also produces log&thinsp;P("False"). Subtracting one from the other
-      should calibrate the reward&mdash;and it costs nothing, since both logits come from the same
-      computation. Unfortunately, five of seven videos get worse:
+      <span class="newthought">When I first read</span> the paper, a natural idea came to me:
+      A forward pass not only gives us log&thinsp;P("True") but also log&thinsp;P("False").
+      Why not subtract one from the other? The intuition is that if the model
+      is uncertain, both probabilities are low, and the difference cancels out;
+      if the model is confident about completion, P("True") dominates and the
+      difference is large. It costs nothing extra. Unfortunately, this idea does not work quite well.
+      For the 7 videos we evaluated, five of them get worse:
     </p>
 
     <table>
@@ -213,12 +195,16 @@
       </table>
 
     <p>
-      The remove_cap reward curve is now inverted (&minus;0.489).
-      The formula assumes P("True") + P("False") &asymp; 1, but Qwen's vocabulary contains
-      over 150,000 tokens; the model distributes probability mass across "Yes", "No", "Correct",
-      "It", and thousands of other continuations. P("False") is not the complement of
-      P("True")&mdash;it is another noisy signal, and subtracting it adds noise rather
-      than removing it. The original paper does not attempt this approach either.
+      The remove_cap reward curve is now even negative (&minus;0.489).
+      The hope was that subtracting P("False") would calibrate the signal, but then it does work.
+      My guess is that
+      in a 150k-token vocabulary, "True" and "False" are just two tokens among
+      thousands of plausible continuations ("Yes", "No", "Correct", "It", &hellip;).
+      P("False") is not the complement of P("True")&mdash;it is another noisy
+      signal, and subtracting noise from noise gives more noise.
+      This is such a natural idea that I suspect the TOPReward authors tried it too
+      and quietly dropped it. I would not have believed it does not help, but the numbers
+      say otherwise.
     </p>
 
   </section>
@@ -227,46 +213,52 @@
 
   <!-- ════ ENSEMBLE ════ -->
   <section>
-    <h2>Prompt ensemble</h2>
+    <h2>Oh ensemble, it always works (and it did)</h2>
 
     <p>
-      <span class="newthought">Nobody knows</span> which prompt phrasing will work for a given
-      task&mdash;including me. But different formulations can be treated as noisy,
-      roughly unbiased samples from the space of reasonable ways to pose the question.
-      Averaging three such samples reduces variance and produces a more stable reward
-      estimate.<label for="sn-ens" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-ens" class="margin-toggle"/><span class="sidenote">This is the standard variance-reduction argument: if individual prompts are noisy but unbiased estimators, averaging N of them reduces variance by roughly 1/N.</span>
-      On fold towel, the ensemble (VOC 0.985) exceeds the 8B model (0.937).
-      On block&rarr;cup, all three methods are already close&mdash;the 2B baseline is good enough.
-      On remove cap, the improvement is modest (0.771 &rarr; 0.806). And on pen&rarr;cup,
-      the 2B model starts near random (0.215); the ensemble helps (0.455) but does not approach
-      8B (0.957). Some tasks remain hard for a small model.
+      <span class="newthought">The key design</span> now is how we phrase the prompt.
+      Suppose we have a large space of prompts, and there surely would be a distribution of good prompts that
+      can help us do it.
+      Since nobody knows which phrasing works best for a given task, this now is a human-driven manual
+      prompt improvement process.
+      Aside from trying to find the best prompt,
+      a natural move here is
+      to try several and average the results, i.e. doing an ensemble. If individual prompts are noisy but we trust that the human-sampled ones are
+      roughly unbiased, averaging them reduces variance.<label for="sn-ens" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-ens" class="margin-toggle"/><span class="sidenote">The standard ensemble variance-reduction argument: if N estimators are noisy but unbiased with uncorrelated errors, averaging reduces variance by ~1/N.</span>
     </p>
+
+    <p>
+      Across all 7 videos, even though we do see a huge gap between a small model (Qwen-VL 2B) and a larger model (Qwen-VL 8B), a N-prompt ensemble (N = 3) easily closes 62% of the 2B&rarr;8B gap
+      (mean VOC: 2B&thinsp;=&thinsp;0.766, ensemble&thinsp;=&thinsp;0.858, 8B&thinsp;=&thinsp;0.916).
+      Per-task: on fold towel, the ensemble (0.985) exceeds 8B (0.937).
+      On block&rarr;cup, 2B is already good enough. On pen&rarr;cup, the 2B baseline is
+      near-random (0.215); the ensemble helps (0.455) but does not approach 8B (0.957).
+      Though some tasks remain hard for a small model.
+    </p>
+
+    <!-- Grouped bar chart: 4 tasks -->
+    <figure>
+      <label for="mn-baseline" class="margin-toggle">&#8853;</label><input type="checkbox" id="mn-baseline" class="margin-toggle"/><span class="marginnote">VOC for four representative tasks. <span style="color:var(--c-2b);">&#9632;</span>&thinsp;Qwen3-VL-2B &ensp; <span style="color:var(--c-ens);">&#9632;</span>&thinsp;Qwen3-VL-2B 3-prompt ensemble &ensp; <span style="color:var(--c-8b);">&#9632;</span>&thinsp;Qwen3-VL-8B. Note the different behaviors: on fold towel, the ensemble actually surpasses 8B; on block&rarr;cup, 2B alone is already good enough; on pen&rarr;cup, even the ensemble struggles.</span>
+      <div class="chart-container" id="chart-baseline"></div>
+    </figure>
 
     <!-- Small multiples: 4 videos × 3 methods -->
     <figure class="fullwidth">
       <div class="small-multiples" id="chart-ensemble-multiples"></div>
-      <figcaption>
-        Reward curves for four tasks.
-        <span style="color:var(--c-2b);">&#9679;</span>&thinsp;2B &ensp;
-        <span style="color:var(--c-ens);">&#9679;</span>&thinsp;3-prompt ensemble &ensp;
-        <span style="color:var(--c-8b);">&#9679;</span>&thinsp;8B.
-      </figcaption>
+      <figcaption>Reward curves for four tasks. <span style="color:var(--c-2b);">&#9679;</span>&thinsp;2B &ensp; <span style="color:var(--c-ens);">&#9679;</span>&thinsp;3-prompt ensemble &ensp; <span style="color:var(--c-8b);">&#9679;</span>&thinsp;8B.</figcaption>
     </figure>
 
     <p>
-      Across all 7 videos, the ensemble closes 62% of the 2B&rarr;8B gap
-      (mean VOC: 2B&thinsp;=&thinsp;0.766, ensemble&thinsp;=&thinsp;0.858, 8B&thinsp;=&thinsp;0.916).
-      Three prompts means three forward passes&mdash;naively, triple the cost. Luckily,
-      Qwen-VL's vision encoder converts frames to embedding tokens once; only the language
-      decoder reruns for each prompt.<label for="sn-arch" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-arch" class="margin-toggle"/><span class="sidenote">The vision encoder (ViT) produces a fixed set of embeddings from the frames. These can be cached and reused across prompts; only the language decoder (the transformer LM) needs to process the new text.</span>
-      Caching the vision embeddings collapses the naive 3&times; overhead to roughly 2&times;.
-      Pushing further to 10 prompts reveals something interesting: the cached N=10 ensemble
+      The ensemble means N prompts with three forward passes with sizable improvement, but N times the cost.
+      Now we can do a quick optimization, as we quickly note that the
+      vision encoder only needs to run once: the cached embeddings
+      can be reused, and only the language decoder reruns for each prompt.
+      This collapses the 3-prompt overhead to roughly 2&times;.
+      Pushing to 10 prompts is where it gets interesting: the cached N=10 ensemble
       costs about 11&times; baseline&mdash;nearly the same as a single 8B run (11.7&times;).
-      At that scale the language decoder dominates so heavily that caching no longer helps much,
-      but the comparison itself is striking: you can either run one large model or run ten
-      diverse prompts on a small model for roughly the same price, with the small-model
-      approach offering more control over prompt diversity.
-      The actual numbers (fold towel, 2B, 10 prefixes):
+      You can either run one large model or ten diverse prompts on a small model
+      for roughly the same price, and the ensemble would have a better calibration.<label for="mn-optim" class="margin-toggle">&#8853;</label><input type="checkbox" id="mn-optim" class="margin-toggle"/><span class="marginnote">There should be more optimization opportunities: batching prompts, quantizing the language decoder more aggressively, or distilling the ensemble into learned soft tokens.</span>
+      The actual numbers (fold towel, 2B, 10 prefixes) are below.
     </p>
 
     <table>
@@ -281,13 +273,10 @@
 
     <!-- Timing stacked bars -->
     <figure>
+      <label for="mn-timing" class="margin-toggle">&#8853;</label><input type="checkbox" id="mn-timing" class="margin-toggle"/><span class="marginnote">Cost normalized to the 2B single-prompt baseline (fold towel, 10 prefixes). Vision (teal) is computed once; language (purple) scales with prompt count. The 10-prompt ensemble and a single 8B run land at nearly the same cost.</span>
       <div class="chart-container" id="chart-timing"></div>
-      <figcaption>
-        Cost normalized to the 2B single-prompt baseline (fold towel, 10 prefixes).
-        Vision (teal) is computed once; language (purple) scales with prompt count.
-        The 10-prompt ensemble and a single 8B run land at nearly the same cost.
-      </figcaption>
     </figure>
+
 
   </section>
 
@@ -295,21 +284,13 @@
 
   <!-- ════ PROMPT SENSITIVITY ════ -->
   <section>
-    <h2>Prompt sensitivity</h2>
+    <h2>More experiments on prompts</h2>
 
     <p>
-      <span class="newthought">To understand</span> why ensembling helps, I wrote 10 prompt
-      variants and tested each individually on 3 videos. The result surprised me:
-      on pen&rarr;cup, the original TOPreward prompt gives VOC&thinsp;=&thinsp;0.215 with the 2B
-      model&mdash;nearly random&mdash;while prompt #9, which uses negation framing ("there is no
-      failure in completing the task"), gives 0.952, matching the 8B model's 0.957 on the same video.
-      The spread across 10 prompts on a single video is wider than the entire 2B&rarr;8B gap,
-      which means prompt wording, not model size, is doing most of the work.
-    </p>
-
-    <p>
-      The 10 prompts are listed below. All end with <code>The answer is:</code> so the next token
-      is True/False. <code>{task}</code> is replaced with the instruction (e.g., "Put the pen into
+      <span class="newthought">To explore</span> the prompt space better, I wrote 10 variants
+      and tested each individually. All prompts end with
+      <code>The answer is:</code> so the next token is True/False.
+      <code>{task}</code> is replaced with the instruction (e.g., "Put the pen into
       the cup.").
     </p>
 
@@ -329,37 +310,30 @@
         </tbody>
       </table>
 
-    <p>
-      The heatmap below shows per-prompt VOC across three videos. No single prompt dominates;
-      the best prompt for pen&rarr;cup (#9) is mediocre on fold towel, and the best for fold
-      towel (#1) is mediocre on stackcubes.
-    </p>
-
     <!-- Prompt heatmap -->
     <figure>
+      <label for="mn-heatmap" class="margin-toggle">&#8853;</label><input type="checkbox" id="mn-heatmap" class="margin-toggle"/><span class="marginnote">Per-prompt VOC across 3 videos. Warm colors indicate high VOC; cool colors indicate low.</span>
       <div class="chart-container" id="chart-heatmap"></div>
-      <figcaption>
-        Per-prompt VOC across 3 videos. Warm colors indicate high VOC; cool colors indicate low.
-      </figcaption>
     </figure>
 
     <p>
-      I also tried selecting the top-3 prompts by mean VOC on these 3 videos and running them
-      on all 7; the result was a mean VOC of 0.738&mdash;worse than the default 3-prompt ensemble
-      at 0.858. The prompts that rescue one task destroy another. Prompt quality is
-      task-dependent, and random diversity beats careful selection.
+      Unsurprisingly, the 3 prompts that I came up with are not the best prompt individually for any task.<label for="sn-surprise" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-surprise" class="margin-toggle"/><span class="sidenote">How surprising is that :)</span>
+      The spread across prompts on a single video is wider than the entire
+      2B&rarr;8B gap. On pen&rarr;cup, the original prompt gives VOC = 0.215 (nearly random),
+      while prompt #9 ("there is no failure in completing the task") gives 0.952&mdash;matching
+      the 8B model. Prompt wording, not model size, is doing most of the work.
+      No single prompt dominates: the best for pen&rarr;cup (#9) is mediocre on fold towel,
+      and vice versa.
     </p>
 
     <p>
-      Automated search might help here&mdash;<a href="https://dspy.ai">DSPy MIPROv2</a>
-      could search over prompt text using VOC as the objective, though I suspect it will
-      encounter the same wall: a yes/no question
-      calibrated for tasks with a clear end state (pen lands in cup) is structurally different
-      from one calibrated for gradual tasks (slowly removing a cap).
-      Prefix tuning&mdash;learning a handful of continuous embedding vectors (~100K parameters,
-      frozen VLM)&mdash;could sidestep the discrete vocabulary
-      entirely.<label for="sn-prefix" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-prefix" class="margin-toggle"/><span class="sidenote">Prefix tuning (Li &amp; Liang, ACL 2021) prepends learnable vectors at every transformer layer, modifying the model's probability distribution with only 0.1% of parameters.</span>
-      This is the one approach that could find a task-general representation, if one exists.
+      I also tried selecting the top-3 prompts by mean VOC on these 3 videos
+      and ran them on all 7. The result: mean VOC of 0.738&mdash;worse than the
+      default 3-prompt ensemble at 0.858. This makes sense: for an ensemble to
+      work well, the prompts need to be diverse so their errors are uncorrelated.
+      Picking the individually best prompts reduces that diversity, making the
+      ensemble more correlated and thus less effective.
+      Random diversity beats careful selection.<label for="sn-prefix" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-prefix" class="margin-toggle"/><span class="sidenote">Beyond manual prompt search, automated approaches like <a href="https://dspy.ai">DSPy, MIPROv2</a> could search over prompt text using VOC as the objective. Prefix tuning (Li &amp; Liang, ACL 2021), learning continuous embedding vectors on a frozen VLM&mdash;could sidestep the discrete vocabulary entirely, is also a possibility and might give us the best result, but it now has training cost. These are worth exploring though.</span>
     </p>
 
   </section>
@@ -368,17 +342,16 @@
 
   <!-- ════ CONCLUSION ════ -->
   <section>
-    <h2>What I found</h2>
+    <h2>What I found, and where this could go</h2>
 
     <p>
-      The finding that surprised me most is how little model size matters relative to phrasing.
+      The finding that surprised me most is how little model size matters relative to phrasing of the prompt.
+      The prompt seems to be of utmost importance.
       Switching prompts on the 2B model spans VOC from 0.21 to 0.95 on the hardest task;
-      the entire 2B&rarr;8B gap is only 0.15. A simple ensemble of three diverse prompts
-      closes 62% of that gap, not because any individual prompt is good, but because their errors
-      are uncorrelated enough that the average is stable. The contrastive extension&mdash;subtracting
-      log&thinsp;P("False")&mdash;was a clean idea that failed because "True" and "False" do not
-      partition the probability space in a 150k-token vocabulary. And careful prompt selection
-      overfits immediately: the prompt that rescues one task is the one that breaks another.
+      it means if we could get better prompts, the entire 2B&rarr;8B gap can be closed.
+      Automated prompt search (e.g. DSPy MIPROv2) or prefix tuning could push this
+      further&mdash;I have not tried these yet.
+      Even without that, a simple 3-prompt ensemble already closes 62% of the gap.
     </p>
 
     <table>
@@ -387,29 +360,121 @@
           <tr><td>8B baseline</td><td class="r hi">0.916</td><td>Consistent. ~12&times; cost of 2B.</td></tr>
           <tr><td>2B ensemble (3 prompts)</td><td class="r hi">0.858</td><td>62% gap closure. ~2&times; cost.</td></tr>
           <tr><td>2B baseline</td><td class="r">0.766</td><td>Too variable on hard tasks.</td></tr>
-          <tr><td>Contrastive 2B</td><td class="r dim">0.520</td><td>P("True") + P("False") &ne; 1.</td></tr>
+          <tr><td>Contrastive 2B</td><td class="r dim">0.520</td><td>Subtracting P("False") adds noise.</td></tr>
         </tbody>
       </table>
 
     <p>
-      The timing data hints at why this works. In Qwen3-VL, the 2B and 8B models share
-      similar vision encoders (SigLIP2, 300M vs 400M parameters) but the language decoder
-      scales from 1.5B to 7.5B.<label for="sn-arch2" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-arch2" class="margin-toggle"/><span class="sidenote">Vision is 52% of 2B inference cost but only 10% of 8B cost. The vision encoder barely grows across model sizes; what scales is the language decoder.</span>
-      For a task as simple as producing a single True/False logit, most of that language
-      capacity is unused. The vision encoder&mdash;which does the actual scene understanding&mdash;is
-      already sufficient at the smaller scale. What the ensemble provides is not better
-      vision but better <em>calibration</em>: averaging over diverse phrasings smooths out
-      the language decoder's sensitivity to prompt wording.
+      But the more interesting observation is <em>why</em> this works. Consider what the model
+      actually does: it looks at video frames and produces a single True/False logit.
+      Just basic visual understanding
+      and a simple language completion.
+      Note that in the ways how the models are trained, the frontier labs and corporations would probably try to improve the language part of the model so that high-end ability emerges: reasoning, long context, multi-round conversation.
     </p>
 
     <p>
-      This suggests a direction worth exploring. If the bottleneck is prompt calibration
-      rather than visual understanding, then smaller models with smarter prompting strategies&mdash;or
-      even a tiny language head trained specifically for reward extraction on top of the
-      frozen vision encoder&mdash;could push the quality further while keeping the cost low.
-      Seven videos is not a large evaluation, and I only tested one model family; but the
-      pattern is clear enough to be worth following.
-      That is the experiment I want to run next.
+      But for the rewards, we probably do not need that.
+      The task here we are looking at for getting the rewards, it does not need such high-end emergent capabilitis.
+      My understanding is that for assessing the task-completeness from videos, the most hard work should be on the vision part (the vision encoder), understanding what is happening; the language
+      decoder is barely exercised out of the basic seqeuence completion task (while though the vision-language aligning is also important).
+
+    </p>
+
+    <p>
+      This is perhaps not surprising if we think about it from a biological
+      perspective: in humans, roughly 30% of the cerebral cortex is devoted to
+      visual processing&mdash;far more than any other sensory modality. Understanding
+      a scene from video is fundamentally harder than completing a sentence.
+      And so naturally I think for VLMs and VLAs the vision part should be more heavy-weighted.
+    </p>
+
+    <p>
+      However, modern VLMs are not designed with this balance in mind and it seems increasingly the focus has been on the language part. If we look
+      at the parameter breakdown:
+    </p>
+    <ul>
+      <li><strong>Qwen3-VL:</strong> the 2B and 8B models share similar vision encoders
+        (SigLIP2, ~300M vs ~400M) while the language decoder scales from 1.5B to
+        7.5B. At 72B, the vision encoder is still only ~0.7B&mdash;a 1:103 ratio.</li>
+      <li><strong>LLaVA-1.5:</strong> ~0.3B vision (CLIP ViT-L), 7&ndash;13B language.</li>
+      <li><strong>Idefics2:</strong> ~0.4B vision (SigLIP), 7B language.</li>
+    </ul>
+
+    <p>
+      The pattern is clear: vision stays small while language scales 10&ndash;100&times;.
+      This makes sense for general-purpose chatbots that need reasoning, long context,
+      and multi-round conversation. But for producing a single True/False logit from
+      video, most of that language capacity is wasted. A few models buck this
+      trend&mdash;InternVL pairs a 6B InternViT with a 20&ndash;70B LM (1:3 to 1:12
+      ratio), PaLI-X pairs a 22B ViT with a 32B LM (nearly 1:1.5). I think they
+      should be.
+    </p>
+
+    <p>
+      The following diagram shows this contrast conceptually: the model we have
+      today, where frontier VLMs are heading, and what we might actually want
+      for reward extraction.
+    </p>
+
+    <!-- Conceptual model comparison -->
+    <figure>
+      <svg width="520" height="200" viewBox="0 0 520 200" style="font-family: et-book, Georgia, serif;">
+        <!-- Labels -->
+        <text x="10" y="38" font-size="13" fill="#333" font-weight="600">What we have now</text>
+        <text x="10" y="98" font-size="13" fill="#333" font-weight="600">Where VLMs</text>
+        <text x="10" y="112" font-size="13" fill="#333" font-weight="600">are heading</text>
+        <text x="10" y="158" font-size="13" fill="#333" font-weight="600">What we want</text>
+
+        <!-- Small VLM: vision 52%, language 48%, total width ~150 -->
+        <rect x="140" y="27" width="78" height="24" fill="#76b7b2" rx="2"/>
+        <rect x="218" y="27" width="72" height="24" fill="#b07aa1" rx="2"/>
+        <text x="179" y="43" text-anchor="middle" font-size="11" fill="white">vision</text>
+        <text x="254" y="43" text-anchor="middle" font-size="11" fill="white">language</text>
+
+        <!-- Frontier VLM: vision ~5%, language ~95%, total width ~400 -->
+        <rect x="140" y="87" width="25" height="24" fill="#76b7b2" rx="2"/>
+        <rect x="165" y="87" width="375" height="24" fill="#b07aa1" rx="2"/>
+        <text x="352" y="103" text-anchor="middle" font-size="11" fill="white">language (scaled 10&ndash;50&times;)</text>
+
+        <!-- Optimal: larger vision, small language -->
+        <rect x="140" y="147" width="150" height="24" fill="#76b7b2" rx="2"/>
+        <rect x="290" y="147" width="50" height="24" fill="#b07aa1" rx="2"/>
+        <text x="215" y="163" text-anchor="middle" font-size="11" fill="white">stronger vision</text>
+        <text x="315" y="163" text-anchor="middle" font-size="11" fill="white">lang</text>
+
+        <!-- Annotation -->
+        <line x1="140" y1="185" x2="340" y2="185" stroke="#999" stroke-width="1" stroke-dasharray="3,3"/>
+        <text x="140" y="198" font-size="12" fill="#6b7280" font-style="italic">invest compute in vision, not language</text>
+      </svg>
+      <label for="mn-concept" class="margin-toggle">&#8853;</label><input type="checkbox" id="mn-concept" class="margin-toggle"/><span class="marginnote">Conceptual compute allocation. Current VLMs scale language far more than vision. Models for VLMs and VLAs should have stronger vision module and a relatively okay-ish language head could be both better and cheaper.</span>
+    </figure>
+
+    <p>
+      For training-free VLM rewards, we do not need a powerful reasoning
+      backbone&mdash;basic language understanding suffices. What matters is good
+      visual scene understanding. A model that invests more compute in vision
+      and less in language could push quality further at lower total cost.
+      Seven videos is not a large evaluation, and I only tested one model family;
+      but the pattern is clear enough to be worth following.
+    </p>
+
+  </section>
+
+  <hr />
+
+  <section>
+    <h2>Epilogue</h2>
+
+    <p>
+      I plan to revisit this idea if I have time, and if I can get hands on resources. Stay tuned.
+    </p>
+
+    <p>
+      Separately, while doing this research,
+      <a href="https://arxiv.org/abs/2510.26742">Running VLAs at Real-time Speed</a>
+      (Ma et al., 2025) caught my eye&mdash;showing that pi0-level VLAs can hit
+      30&thinsp;Hz on a single consumer GPU. Making robotics affordable and
+      accessible is a theme I want to keep exploring too.
     </p>
 
   </section>

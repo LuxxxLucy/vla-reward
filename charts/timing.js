@@ -66,7 +66,7 @@
 
   g.append('g').attr('class', 'axis')
     .call(d3.axisLeft(y).tickSize(0))
-    .selectAll('text').attr('font-size', '11px');
+    .selectAll('text').attr('font-size', '13px');
 
   rows.forEach(d => {
     const yPos = y(d.label);
@@ -111,7 +111,7 @@
     g.append('text')
       .attr('x', totalW + 5).attr('y', yPos + bh / 2)
       .attr('dy', '0.35em')
-      .attr('font-size', '11px').attr('fill', '#111')
+      .attr('font-size', '13px').attr('fill', '#111')
       .attr('font-weight', d.showSplit ? '600' : '400')
       .text(d.mult.toFixed(1) + '×');
   });
@@ -119,6 +119,6 @@
   const legend = g.append('g').attr('transform', `translate(0, -8)`);
   [{ label: 'Vision', color: C.vision }, { label: 'Language', color: C.language }].forEach((l, i) => {
     legend.append('rect').attr('x', i * 80).attr('y', 0).attr('width', 10).attr('height', 10).attr('fill', l.color).attr('rx', 2);
-    legend.append('text').attr('x', i * 80 + 14).attr('y', 9).attr('font-size', '10px').attr('fill', '#6b7280').text(l.label);
+    legend.append('text').attr('x', i * 80 + 14).attr('y', 9).attr('font-size', '12px').attr('fill', '#6b7280').text(l.label);
   });
 })();

@@ -21,7 +21,7 @@
     .attr('transform', `translate(0,${height})`)
     .call(d3.axisBottom(x).ticks(10).tickSize(0));
   g.append('text').attr('x', width/2).attr('y', height + 30)
-    .attr('text-anchor', 'middle').attr('font-size', '11px').attr('fill', C.muted)
+    .attr('text-anchor', 'middle').attr('font-size', '13px').attr('fill', C.muted)
     .text('Video prefix');
 
   g.append('g').attr('class', 'axis')
@@ -33,6 +33,7 @@
     .y(d => y(d))
     .curve(d3.curveMonotoneX);
 
+  // Draw lines
   DATA.landscape.methods.forEach(m => {
     g.append('path')
       .datum(m.values)
@@ -42,15 +43,28 @@
       .attr('opacity', m.name.startsWith('Our') ? 1 : 0.6)
       .attr('stroke-dasharray', m.name === 'GVL' ? '4,3' : 'none')
       .attr('d', line);
+  });
 
-    // End-of-line label
-    const lastVal = m.values[m.values.length - 1];
+  // End-of-line labels with collision avoidance
+  const labels = DATA.landscape.methods.map(m => ({
+    name: m.name,
+    color: m.color,
+    y: y(m.values[m.values.length - 1])
+  }));
+  labels.sort((a, b) => a.y - b.y);
+  const minGap = 12;
+  for (let i = 1; i < labels.length; i++) {
+    if (labels[i].y - labels[i-1].y < minGap) {
+      labels[i].y = labels[i-1].y + minGap;
+    }
+  }
+  labels.forEach(l => {
     g.append('text')
       .attr('x', width + 6)
-      .attr('y', y(lastVal))
+      .attr('y', l.y)
       .attr('dy', '0.35em')
-      .attr('font-size', '10px')
-      .attr('fill', m.color)
-      .text(m.name);
+      .attr('font-size', '12px')
+      .attr('fill', l.color)
+      .text(l.name);
   });
 })();

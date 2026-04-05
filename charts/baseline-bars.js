@@ -40,7 +40,7 @@
     .attr('transform', `translate(0,${height})`)
     .call(d3.axisBottom(x0).tickSize(0))
     .selectAll('text')
-      .attr('font-size', '11px')
+      .attr('font-size', '13px')
       .attr('transform', 'rotate(-15)')
       .attr('text-anchor', 'end');
 
@@ -78,6 +78,6 @@
     legend.append('rect').attr('x', lx).attr('y', 0).attr('width', 10).attr('height', 10)
       .attr('fill', m.color).attr('rx', 2);
     legend.append('text').attr('x', lx + 14).attr('y', 9)
-      .attr('font-size', '11px').attr('fill', C.muted).text(m.label);
+      .attr('font-size', '13px').attr('fill', C.muted).text(m.label);
   });
 })();
